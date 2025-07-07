@@ -8,6 +8,10 @@ from bs4 import BeautifulSoup
 st.set_page_config(page_title="Cat CPT 😺", layout="wide")
 st.title("Cat CPT 😺")
 
+# Soruları ve cevapları saklayacağımız liste
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
+
 # Kullanıcıdan metin al
 text = st.text_input("Sorunuzu yazın:")
 
@@ -34,37 +38,45 @@ if uploaded_file is not None:
         img = Image.open(uploaded_file)
         st.image(img, caption="Yüklenen Görsel", use_column_width=True)
 
-# Gündelik konuşmaları tanıma ve araştırma
+# Kullanıcının yazdığı metin varsa işle
 if text:
     text = text.lower()
 
+    # Gündelik konuşmalara özel cevap ver
     if "selam" in text or "merhaba" in text:
-        st.write("Selam! Size nasıl yardımcı olabilirim?")
+        response = "Selam! Size nasıl yardımcı olabilirim?"
     elif "naber" in text or "nasılsın" in text:
-        st.write("İyiyim, sen nasılsın?")
+        response = "İyiyim, sen nasılsın?"
     elif "teşekkür" in text:
-        st.write("Rica ederim! 😊")
+        response = "Rica ederim! 😊"
     else:
-        st.write("Sorunuzu araştırıyorum...")
-
+        response = "Araştırılıyor..."
         try:
-            # Google'da arama yap
             results = list(search(text, num_results=1))
             if results:
                 url = results[0]
-                response = requests.get(url, timeout=10)
-                soup = BeautifulSoup(response.text, "html.parser")
+                res = requests.get(url, timeout=10)
+                soup = BeautifulSoup(res.text, "html.parser")
                 paragraphs = soup.find_all("p")
-                answer = ""
+                found = False
                 for p in paragraphs:
                     if len(p.text.strip()) > 50:
-                        answer = p.text.strip()
+                        response = p.text.strip()
+                        found = True
                         break
-                if answer:
-                    st.write("🔎 **Cevap:**", answer)
-                else:
-                    st.write("Uygun bir cevap bulunamadı.")
+                if not found:
+                    response = "Uygun bir cevap bulunamadı."
             else:
-                st.write("Hiç sonuç bulunamadı.")
+                response = "Hiç sonuç bulunamadı."
         except Exception as e:
-            st.write("Araştırma sırasında bir hata oluştu:", str(e))
+            response = f"Araştırma sırasında bir hata oluştu: {str(e)}"
+
+    # Soruyu ve cevabı geçmişe ekle
+    st.session_state.chat_history.append((text, response))
+
+# Önceki soru-cevapları sırayla göster
+if st.session_state.chat_history:
+    st.subheader("🧠 Sohbet Geçmişi")
+    for i, (q, a) in enumerate(st.session_state.chat_history, start=1):
+        st.markdown(f"**{i}. Soru:** {q}")
+        st.markdown(f"**{i}. Cevap:** {a}")
