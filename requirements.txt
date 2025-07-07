@@ -1,3 +1,6 @@
 streamlit
 PyPDF2
 Pillow
+googlesearch-python
+requests
+beautifulsoup4
