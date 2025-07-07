@@ -1,7 +1,9 @@
 import streamlit as st
 from PyPDF2 import PdfReader
 from PIL import Image
-import urllib.parse
+from googlesearch import search
+import requests
+from bs4 import BeautifulSoup
 
 st.set_page_config(page_title="Cat CPT 😺", layout="wide")
 st.title("Cat CPT 😺")
@@ -32,7 +34,7 @@ if uploaded_file is not None:
         img = Image.open(uploaded_file)
         st.image(img, caption="Yüklenen Görsel", use_column_width=True)
 
-# Gündelik konuşmaları tanıma ve işlem
+# Gündelik konuşmaları tanıma ve araştırma
 if text:
     text = text.lower()
 
@@ -43,12 +45,26 @@ if text:
     elif "teşekkür" in text:
         st.write("Rica ederim! 😊")
     else:
-        # Soruysa Google ve Wikipedia linki oluştur
         st.write("Sorunuzu araştırıyorum...")
 
-        query = urllib.parse.quote_plus(text)
-        google_link = f"https://www.google.com/search?q={query}"
-        wiki_link = f"https://tr.wikipedia.org/wiki/{query.replace('+', '_')}"
-
-        st.markdown(f"🔍 [Google'da Ara]({google_link})")
-        st.markdown(f"📚 [Vikipedi'de Bak]({wiki_link})")
+        try:
+            # Google'da arama yap
+            results = list(search(text, num_results=1))
+            if results:
+                url = results[0]
+                response = requests.get(url, timeout=10)
+                soup = BeautifulSoup(response.text, "html.parser")
+                paragraphs = soup.find_all("p")
+                answer = ""
+                for p in paragraphs:
+                    if len(p.text.strip()) > 50:
+                        answer = p.text.strip()
+                        break
+                if answer:
+                    st.write("🔎 **Cevap:**", answer)
+                else:
+                    st.write("Uygun bir cevap bulunamadı.")
+            else:
+                st.write("Hiç sonuç bulunamadı.")
+        except Exception as e:
+            st.write("Araştırma sırasında bir hata oluştu:", str(e))
