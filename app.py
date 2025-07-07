@@ -8,17 +8,13 @@ from bs4 import BeautifulSoup
 st.set_page_config(page_title="Cat CPT 😺", layout="wide")
 st.title("Cat CPT 😺")
 
-# Soruları ve cevapları saklayacağımız liste
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
-# Kullanıcıdan metin al
 text = st.text_input("Sorunuzu yazın:")
 
-# Dosya yükleme alanı
 uploaded_file = st.file_uploader("Bir dosya yükleyin (.pdf, .txt, .jpg, .png)", type=["pdf", "txt", "jpg", "jpeg", "png"])
 
-# Dosya analiz kısmı
 if uploaded_file is not None:
     file_type = uploaded_file.type
     st.subheader("Yüklenen Dosya:")
@@ -38,18 +34,26 @@ if uploaded_file is not None:
         img = Image.open(uploaded_file)
         st.image(img, caption="Yüklenen Görsel", use_column_width=True)
 
-# Kullanıcının yazdığı metin varsa işle
 if text:
-    text = text.lower()
+    text_lower = text.lower()
 
-    # Gündelik konuşmalara özel cevap ver
-    if "selam" in text or "merhaba" in text:
+    # Anahtar kelime listeleri
+    analiz_ifadeleri = ["sence", "ne düşünüyorsun", "mantıklı mı", "gerek var mı", "saçma mı", "iyi mi", "kötü mü"]
+    bilgi_ifadeleri = ["nedir", "kimdir", "ne demek", "kaç yaşında", "hangi", "nerede", "nasıl", "neden", "ne zaman"]
+
+    is_analiz = any(kelime in text_lower for kelime in analiz_ifadeleri)
+    is_bilgi = any(kelime in text_lower for kelime in bilgi_ifadeleri)
+
+    # Gündelik konuşmalar
+    if "selam" in text_lower or "merhaba" in text_lower:
         response = "Selam! Size nasıl yardımcı olabilirim?"
-    elif "naber" in text or "nasılsın" in text:
+    elif "naber" in text_lower or "nasılsın" in text_lower:
         response = "İyiyim, sen nasılsın?"
-    elif "teşekkür" in text:
+    elif "teşekkür" in text_lower:
         response = "Rica ederim! 😊"
-    else:
+    elif is_analiz:
+        response = "Bu konuda kendi düşüncem: Bence oldukça ilginç bir konu. 😺"
+    elif is_bilgi:
         response = "Araştırılıyor..."
         try:
             results = list(search(text, num_results=1))
@@ -69,12 +73,13 @@ if text:
             else:
                 response = "Hiç sonuç bulunamadı."
         except Exception as e:
-            response = f"Araştırma sırasında bir hata oluştu: {str(e)}"
+            response = f"Araştırma sırasında hata oluştu: {str(e)}"
+    else:
+        response = "Bu konuda size yardımcı olmak için daha fazla bilgi verebilir misiniz?"
 
-    # Soruyu ve cevabı geçmişe ekle
     st.session_state.chat_history.append((text, response))
 
-# Önceki soru-cevapları sırayla göster
+# Sıralı geçmiş gösterimi
 if st.session_state.chat_history:
     st.subheader("🧠 Sohbet Geçmişi")
     for i, (q, a) in enumerate(st.session_state.chat_history, start=1):
