@@ -1,19 +1,15 @@
+# Cat CPT 😺
 
-# Cat CPT
-
-Cat CPT, Türkçe çalışan, sohbet tabanlı yapay zeka asistanıdır.
+Cat CPT, kullanıcıların sorularını anlayabilen ve otomatik olarak Google'da araştırma yapabilen Türkçe bir yapay zeka sohbet botudur. Ayrıca dosya (PDF, metin) ve görsel analiz özellikleri de vardır.
 
 ## Özellikler
-
-- ChatGPT benzeri arayüz
-- Wikipedia'dan TAM cümleyle bilgi arama
-- Gündelik konuşmalara cevap verebilme
-- Soru analiz edebilme (yorum/sorgulama ayrımı)
-- Görsel (.jpg, .png) ve belge (.pdf, .txt) analiz desteği
+- Gündelik konuşmaları anlama (selam, naber, teşekkür vs.)
+- Soruları analiz edebilme
+- Soruları Google'da araştırma (Wikipedia yerine)
+- PDF, TXT ve görsel dosyaları analiz etme
+- Basit ve şık bir Streamlit arayüzü
 
 ## Kurulum
 
 ```bash
 pip install -r requirements.txt
-streamlit run app.py
-```
