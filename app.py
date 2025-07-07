@@ -1,75 +1,54 @@
 import streamlit as st
 from PyPDF2 import PdfReader
 from PIL import Image
-from urllib.parse import quote_plus
+import urllib.parse
 
-st.set_page_config(page_title="Cat CPT", page_icon="😺")
+st.set_page_config(page_title="Cat CPT 😺", layout="wide")
+st.title("Cat CPT 😺")
 
-st.title("😺 Cat CPT")
-st.write("Soru sor, sohbet et, dosya ya da fotoğraf gönder!")
+# Kullanıcıdan metin al
+text = st.text_input("Sorunuzu yazın:")
 
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []
+# Dosya yükleme alanı
+uploaded_file = st.file_uploader("Bir dosya yükleyin (.pdf, .txt, .jpg, .png)", type=["pdf", "txt", "jpg", "jpeg", "png"])
 
-uploaded_file = st.file_uploader("📎 Dosya veya görsel yükle (.txt, .pdf, .jpg, .png):", 
-                                 type=["txt", "pdf", "jpg", "jpeg", "png"])
+# Dosya analiz kısmı
+if uploaded_file is not None:
+    file_type = uploaded_file.type
+    st.subheader("Yüklenen Dosya:")
 
-def analyze_text_file(file):
-    text = file.read().decode("utf-8")
-    return f"📄 Dosya içeriği özetle:\n\n{text[:500]}..."
+    if "pdf" in file_type:
+        reader = PdfReader(uploaded_file)
+        all_text = ""
+        for page in reader.pages:
+            all_text += page.extract_text()
+        st.text_area("PDF İçeriği", all_text)
+    
+    elif "text" in file_type:
+        content = uploaded_file.read().decode("utf-8")
+        st.text_area("Metin Dosyası İçeriği", content)
 
-def analyze_pdf(file):
-    reader = PdfReader(file)
-    text = ""
-    for page in reader.pages[:2]:
-        text += page.extract_text()
-    return f"📄 PDF Özeti:\n\n{text[:500]}..."
+    elif "image" in file_type:
+        img = Image.open(uploaded_file)
+        st.image(img, caption="Yüklenen Görsel", use_column_width=True)
 
-def analyze_image(file):
-    image = Image.open(file)
-    st.image(image, caption="Yüklenen Görsel", use_column_width=True)
-    return "🖼️ Görsel analizim: Resimde ilginç bir şey var gibi görünüyor! Daha iyi analiz için gelişmiş modele ihtiyaç var 😺"
-
-if uploaded_file:
-    st.session_state.chat_history.append(("Sen", f"{uploaded_file.name} dosyasını yükledi."))
-
-    if uploaded_file.type == "text/plain":
-        result = analyze_text_file(uploaded_file)
-    elif uploaded_file.type == "application/pdf":
-        result = analyze_pdf(uploaded_file)
-    elif uploaded_file.type.startswith("image/"):
-        result = analyze_image(uploaded_file)
-    else:
-        result = "Bu dosya türünü analiz edemiyorum."
-
-    st.session_state.chat_history.append(("Cat CPT", result))
-
-def is_question(text):
-    return "?" in text or text.strip().lower().startswith(("kim", "ne", "hangi", "neden", "nasıl", "kaç", "nerede"))
-
-def is_analytic_question(text):
-    keywords = [
-        "etkiler", "mantıklı mı", "doğru mu", "yanlış mı", "gerekiyor mu",
-        "zararlı mı", "iyi mi", "kötü mü", "gerekli mi", "faydalı mı", "tehlikeli mi",
-        "ne düşünüyorsun", "sence", "olur mu", "doğru olur mu", "düşüncen nedir"
-    ]
-    text_lower = text.lower()
-    return any(kw in text_lower for kw in keywords) or text_lower.startswith(("sence", "sana göre"))
-
-def is_casual_greeting(text):
-    greetings = [
-        "selam", "merhaba", "naber", "nasılsın", "günaydın", "iyi akşamlar", "iyi geceler",
-        "teşekkür", "teşekkür ederim", "sağ ol", "eyvallah", "hoşça kal", "görüşürüz",
-        "napıyon", "ne yapıyorsun", "adın ne", "ismin ne", "seni kim yaptı", "geliştiricin kim"
-    ]
-    return any(greet in text.lower() for greet in greetings)
-
-def respond_to_greeting(text):
+# Gündelik konuşmaları tanıma ve işlem
+if text:
     text = text.lower()
-    if "napıyon" in text or "ne yapıyorsun" in text:
-        return "Seninle sohbet ediyorum 😸"
-    elif "adın ne" in text or "ismin ne" in text:
-        return "Benim adım Cat CPT! Yapay zekâyım 😺"
-    elif "seni kim yaptı" in text or "geliştiricin kim" in text:
-        return "Beni Melih yaptı! Harika biri 😎"
-    elif "teşekkür" in text
+
+    if "selam" in text or "merhaba" in text:
+        st.write("Selam! Size nasıl yardımcı olabilirim?")
+    elif "naber" in text or "nasılsın" in text:
+        st.write("İyiyim, sen nasılsın?")
+    elif "teşekkür" in text:
+        st.write("Rica ederim! 😊")
+    else:
+        # Soruysa Google ve Wikipedia linki oluştur
+        st.write("Sorunuzu araştırıyorum...")
+
+        query = urllib.parse.quote_plus(text)
+        google_link = f"https://www.google.com/search?q={query}"
+        wiki_link = f"https://tr.wikipedia.org/wiki/{query.replace('+', '_')}"
+
+        st.markdown(f"🔍 [Google'da Ara]({google_link})")
+        st.markdown(f"📚 [Vikipedi'de Bak]({wiki_link})")
