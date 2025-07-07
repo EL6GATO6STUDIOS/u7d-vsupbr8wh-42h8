@@ -1,10 +1,8 @@
-
 import streamlit as st
-import wikipedia
 from PyPDF2 import PdfReader
 from PIL import Image
+from urllib.parse import quote_plus
 
-wikipedia.set_lang("tr")
 st.set_page_config(page_title="Cat CPT", page_icon="😺")
 
 st.title("😺 Cat CPT")
@@ -74,53 +72,4 @@ def respond_to_greeting(text):
         return "Benim adım Cat CPT! Yapay zekâyım 😺"
     elif "seni kim yaptı" in text or "geliştiricin kim" in text:
         return "Beni Melih yaptı! Harika biri 😎"
-    elif "teşekkür" in text or "sağ ol" in text or "eyvallah" in text:
-        return "Ne demek, her zaman yardıma hazırım! 😺"
-    elif "günaydın" in text:
-        return "Günaydın! Güne enerjiyle başla 😸"
-    elif "iyi akşamlar" in text:
-        return "İyi akşamlar! Umarım günün güzel geçmiştir."
-    elif "iyi geceler" in text:
-        return "İyi geceler! Tatlı rüyalar 😴"
-    elif "naber" in text or "nasılsın" in text:
-        return "İyiyim, sen nasılsın? Sohbet etmek harika!"
-    elif "selam" in text or "merhaba" in text:
-        return "Selam! Hoş geldin 😺"
-    elif "görüşürüz" in text or "hoşça kal" in text:
-        return "Görüşürüz! Kendine dikkat et 🐾"
-    else:
-        return "😺"
-
-def search_wikipedia(query):
-    try:
-        results = wikipedia.search(query)
-        if not results:
-            return "Wikipedia'da bu konuyla ilgili bir şey bulamadım."
-        summary = wikipedia.summary(results[0], sentences=2)
-        return summary
-    except Exception:
-        return "Wikipedia'dan bilgi alırken bir hata oluştu."
-
-def generate_analysis(text):
-    return f"Bu konu tartışmalı. Benim düşünceme göre: '{text}' farklı görüşlere sahip olabilir. Avantajları ve riskleri var."
-
-user_message = st.chat_input("Mesajınızı yazın...")
-
-if user_message:
-    st.session_state.chat_history.append(("Sen", user_message))
-
-    if is_casual_greeting(user_message):
-        bot_response = respond_to_greeting(user_message)
-    elif is_question(user_message):
-        if is_analytic_question(user_message):
-            bot_response = generate_analysis(user_message)
-        else:
-            bot_response = f"📚 Wikipedia'dan buldum:\n\n{search_wikipedia(user_message)}"
-    else:
-        bot_response = "Bu bir soru gibi görünmüyor. Sohbet etmek istersen buradayım 😺"
-
-    st.session_state.chat_history.append(("Cat CPT", bot_response))
-
-for sender, message in st.session_state.chat_history:
-    with st.chat_message(sender.lower()):
-        st.markdown(message)
+    elif "teşekkür" in text
