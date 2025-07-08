@@ -1,84 +1,87 @@
 import streamlit as st
-import random
+from PyPDF2 import PdfReader
+from PIL import Image
 from googlesearch import search
+import requests
+from bs4 import BeautifulSoup
 
-st.set_page_config(page_title="Cat CPT", layout="wide")
+st.set_page_config(page_title="Cat CPT 😺", layout="wide")
+st.title("Cat CPT 😺")
 
-st.markdown("""
-    <style>
-        .message-box {
-            background-color: #2c2c2c;
-            color: black;
-            padding: 1rem;
-            border-radius: 12px;
-            margin: 0.5rem 0;
-            max-width: 70%;
-        }
-        .user { align-self: flex-end; background-color: #3a3a3a; }
-        .bot { align-self: flex-start; background-color: #2c2c2c; }
-        .chat-container {
-            display: flex;
-            flex-direction: column;
-            height: 70vh;
-            overflow-y: auto;
-            padding: 1rem;
-        }
-        .input-area {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            padding: 1rem;
-            background-color: #1e1e1e;
-            display: flex;
-            gap: 0.5rem;
-        }
-        input[type="file"] {
-            color: white;
-        }
-    </style>
-""", unsafe_allow_html=True)
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
 
-st.markdown('<h1 style="color:white;">Cat CPT</h1>', unsafe_allow_html=True)
+text = st.text_input("Sorunuzu yazın:")
 
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+uploaded_file = st.file_uploader("Bir dosya yükleyin (.pdf, .txt, .jpg, .png)", type=["pdf", "txt", "jpg", "jpeg", "png"])
 
-def generate_bot_reply(message):
-    if "merhaba" in message.lower():
-        return "Merhaba! Size nasıl yardımcı olabilirim?"
-    elif "teşekkür" in message.lower():
-        return "Rica ederim! Her zaman buradayım."
-    elif "mutluluk" in message.lower() and "zengin" in message.lower():
-        return "Bence zenginlikle mutluluk garanti edilmez. Manevi tatmin daha önemlidir."
-    elif "nedir" in message.lower() or "kimdir" in message.lower():
+if uploaded_file is not None:
+    file_type = uploaded_file.type
+    st.subheader("Yüklenen Dosya:")
+
+    if "pdf" in file_type:
+        reader = PdfReader(uploaded_file)
+        all_text = ""
+        for page in reader.pages:
+            all_text += page.extract_text()
+        st.text_area("PDF İçeriği", all_text)
+    
+    elif "text" in file_type:
+        content = uploaded_file.read().decode("utf-8")
+        st.text_area("Metin Dosyası İçeriği", content)
+
+    elif "image" in file_type:
+        img = Image.open(uploaded_file)
+        st.image(img, caption="Yüklenen Görsel", use_column_width=True)
+
+if text:
+    text_lower = text.lower()
+
+    # Anahtar kelime listeleri
+    analiz_ifadeleri = ["sence", "ne düşünüyorsun", "mantıklı mı", "gerek var mı", "saçma mı", "iyi mi", "kötü mü"]
+    bilgi_ifadeleri = ["nedir", "kimdir", "ne demek", "kaç yaşında", "hangi", "nerede", "nasıl", "neden", "ne zaman"]
+
+    is_analiz = any(kelime in text_lower for kelime in analiz_ifadeleri)
+    is_bilgi = any(kelime in text_lower for kelime in bilgi_ifadeleri)
+
+    # Gündelik konuşmalar
+    if "selam" in text_lower or "merhaba" in text_lower:
+        response = "Selam! Size nasıl yardımcı olabilirim?"
+    elif "naber" in text_lower or "nasılsın" in text_lower:
+        response = "İyiyim, sen nasılsın?"
+    elif "teşekkür" in text_lower:
+        response = "Rica ederim! 😊"
+    elif is_analiz:
+        response = "Bu konuda kendi düşüncem: Bence oldukça ilginç bir konu. 😺"
+    elif is_bilgi:
+        response = "Araştırılıyor..."
         try:
-            result = next(search(message, num_results=1))
-            return f"Bu konuda bulduğum kaynak: {result}"
-        except:
-            return "Araştırma yaparken bir sorun oluştu."
+            results = list(search(text, num_results=1))
+            if results:
+                url = results[0]
+                res = requests.get(url, timeout=10)
+                soup = BeautifulSoup(res.text, "html.parser")
+                paragraphs = soup.find_all("p")
+                found = False
+                for p in paragraphs:
+                    if len(p.text.strip()) > 50:
+                        response = p.text.strip()
+                        found = True
+                        break
+                if not found:
+                    response = "Uygun bir cevap bulunamadı."
+            else:
+                response = "Hiç sonuç bulunamadı."
+        except Exception as e:
+            response = f"Araştırma sırasında hata oluştu: {str(e)}"
     else:
-        return "Bu konuda kendi fikrimle yardımcı olayım: Hayata farklı açılardan bakmak iyidir. 🤔"
+        response = "Bu konuda size yardımcı olmak için daha fazla bilgi verebilir misiniz?"
 
-# Gösterilen Sohbet
-st.markdown('<div class="chat-container">', unsafe_allow_html=True)
-for i, (user_msg, bot_msg) in enumerate(st.session_state.messages, 1):
-    st.markdown(f'<div class="message-box user"><strong>User:</strong> {user_msg}</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="message-box bot"><strong>Cat CPT:</strong> {bot_msg}</div>', unsafe_allow_html=True)
-st.markdown('</div>', unsafe_allow_html=True)
+    st.session_state.chat_history.append((text, response))
 
-# Giriş alanı ve dosya/fotoğraf yükleme
-st.markdown('<div class="input-area">', unsafe_allow_html=True)
-user_input = st.text_input("Mesajınızı yazın", "", key="input")
-col1, col2, col3 = st.columns([5, 1, 1])
-with col2:
-    st.file_uploader("Fotoğraf", type=["png", "jpg", "jpeg"], label_visibility="collapsed", key="photo")
-with col3:
-    st.file_uploader("Dosya", label_visibility="collapsed", key="file")
-st.markdown('</div>', unsafe_allow_html=True)
-
-# Mesaj gönderildiğinde
-if user_input:
-    response = generate_bot_reply(user_input)
-    st.session_state.messages.append((user_input, response))
-    st.experimental_rerun()
+# Sıralı geçmiş gösterimi
+if st.session_state.chat_history:
+    st.subheader("🧠 Sohbet Geçmişi")
+    for i, (q, a) in enumerate(st.session_state.chat_history, start=1):
+        st.markdown(f"**{i}. Soru:** {q}")
+        st.markdown(f"**{i}. Cevap:** {a}")
