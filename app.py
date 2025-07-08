@@ -1,105 +1,96 @@
 import streamlit as st
-from PyPDF2 import PdfReader
-from PIL import Image
 from googlesearch import search
-import requests
 from bs4 import BeautifulSoup
+import requests
 import random
+from PIL import Image
+from PyPDF2 import PdfReader
 
-# Sayfa başlığı ve ayarları
-st.set_page_config(page_title="Cat CPT 😺", layout="wide")
-st.title("Cat CPT 😺")
+st.set_page_config(page_title="Cat CPT 😺", layout="centered")
+st.markdown("<h1 style='text-align: center;'>Cat CPT 😺</h1>", unsafe_allow_html=True)
 
-# Sohbet geçmişi
+# Geçmişi sakla
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
-# Kullanıcıdan giriş al
-text = st.text_input("Sorunuzu yazın:")
+# Stil ayarları
+def style_user(text):
+    return f"""<div style="background-color:#DCF8C6; padding:10px; border-radius:10px; margin:10px 0;"><b>Sen:</b><br>{text}</div>"""
 
-# Dosya yükleme alanı
-uploaded_file = st.file_uploader("Bir dosya yükleyin (.pdf, .txt, .jpg, .png)", type=["pdf", "txt", "jpg", "jpeg", "png"])
+def style_bot(text):
+    return f"""<div style="background-color:#E6E6EA; padding:10px; border-radius:10px; margin:10px 0;"><b>Cat CPT:</b><br>{text}</div>"""
 
-# Yüklenen dosya gösterimi
-if uploaded_file is not None:
-    file_type = uploaded_file.type
-    st.subheader("Yüklenen Dosya:")
-
-    if "pdf" in file_type:
-        reader = PdfReader(uploaded_file)
-        all_text = ""
-        for page in reader.pages:
-            all_text += page.extract_text()
-        st.text_area("PDF İçeriği", all_text)
-
-    elif "text" in file_type:
-        content = uploaded_file.read().decode("utf-8")
-        st.text_area("Metin Dosyası İçeriği", content)
-
-    elif "image" in file_type:
-        img = Image.open(uploaded_file)
-        st.image(img, caption="Yüklenen Görsel", use_column_width=True)
-
-# Yorumlama (analiz) cevabı üreten fonksiyon
-def generate_opinion_response(user_input):
-    fikir_sablonlari = [
-        "Bence bu oldukça düşündürücü. {} konusu, insanların karakterine ve bakış açısına göre değişir.",
-        "{} hakkında kendi fikrimi söylemem gerekirse: bu konuda oldukça net bir görüşüm var.",
-        "Açıkçası ben {} konusuna pek sıcak bakmıyorum. Ama herkesin fikrine saygı duyarım.",
-        "{} bana kalırsa günümüzde sıkça tartışılan bir mesele. Bence önemli olan kişinin yaklaşımıdır.",
-        "{} konusunu düşündüğümde aklıma gelen ilk şey: insanları yargılamadan önce anlamaya çalışmak.",
-        "Kendi bakış açıma göre, {} biraz abartılıyor olabilir. Ama yine de farklı düşünceler değerlidir.",
-        "{} ile ilgili fikrim şu: bu durum tamamen bağlama göre değişebilir, ama genel olarak destekliyorum.",
+# Fikir üretici
+def generate_opinion_response(text):
+    fikirler = [
+        f"Bence {text} oldukça önemli bir konu. Kişiden kişiye değişebilir.",
+        f"{text} bana kalırsa dikkatle değerlendirilmesi gereken bir durum.",
+        f"Açıkçası {text} hakkında net bir fikrim var: oldukça karmaşık.",
+        f"{text} konusunda herkes aynı fikirde olmayabilir, ama bence ilginç bir mesele."
     ]
-    sablon = random.choice(fikir_sablonlari)
-    return sablon.format(user_input.capitalize())
+    return random.choice(fikirler)
 
-# Kullanıcının metnini işleme
+# Soru analizi
+def is_gundelik(text):
+    return any(x in text.lower() for x in ["selam", "merhaba", "naber", "nasılsın", "teşekkür"])
+
+def is_analiz(text):
+    return any(x in text.lower() for x in ["sence", "yorumla", "analiz", "düşünüyorsun", "bakış açın", "karakter"])
+
+# Google araştırması
+def google_arastir(query):
+    try:
+        results = list(search(query, num_results=1))
+        if results:
+            url = results[0]
+            res = requests.get(url, timeout=10)
+            soup = BeautifulSoup(res.text, "html.parser")
+            for p in soup.find_all("p"):
+                if len(p.text.strip()) > 60:
+                    return p.text.strip()
+        return "Uygun bir bilgi bulunamadı."
+    except Exception as e:
+        return f"Araştırma hatası: {str(e)}"
+
+# Girdi alanı
+text = st.text_input("Mesajınızı yazın...")
+
+# Yükleme alanı
+uploaded = st.file_uploader("Dosya yükleyin (.pdf, .txt, .jpg, .png)", type=["pdf", "txt", "jpg", "jpeg", "png"])
+if uploaded:
+    st.subheader("Yüklenen Dosya:")
+    if "pdf" in uploaded.type:
+        reader = PdfReader(uploaded)
+        content = "".join([p.extract_text() for p in reader.pages if p.extract_text()])
+        st.text_area("PDF İçeriği", content)
+    elif "text" in uploaded.type:
+        content = uploaded.read().decode("utf-8")
+        st.text_area("Metin Dosyası", content)
+    elif "image" in uploaded.type:
+        img = Image.open(uploaded)
+        st.image(img, caption="Görsel", use_column_width=True)
+
+# Girdi varsa yanıt üret
 if text:
-    original_text = text
-    lower_text = text.lower()
-
-    # Gündelik konuşmalar
-    if any(word in lower_text for word in ["selam", "merhaba"]):
-        response = "Selam! Size nasıl yardımcı olabilirim?"
-    elif any(word in lower_text for word in ["naber", "nasılsın"]):
-        response = "İyiyim, sen nasılsın?"
-    elif "teşekkür" in lower_text:
-        response = "Rica ederim! 😊"
-
-    # Analiz (yorumlama) isteyen ifadeler
-    elif any(keyword in lower_text for keyword in ["sence", "yorumla", "analiz", "ne düşünüyorsun", "karakter", "tartış", "duygusal", "kişilik"]):
-        response = generate_opinion_response(original_text)
-
-    # Diğer tüm sorular için Google araştırması
+    if is_gundelik(text):
+        if "selam" in text.lower() or "merhaba" in text.lower():
+            response = "Merhaba! 😊 Size nasıl yardımcı olabilirim?"
+        elif "naber" in text.lower() or "nasılsın" in text.lower():
+            response = "İyiyim, sen nasılsın?"
+        elif "teşekkür" in text.lower():
+            response = "Rica ederim! Her zaman buradayım."
+        else:
+            response = "Anlayabildiğim bir gündelik ifade algıladım."
+    elif is_analiz(text):
+        response = generate_opinion_response(text)
     else:
-        response = "Araştırılıyor..."
-        try:
-            results = list(search(original_text, num_results=1))
-            if results:
-                url = results[0]
-                res = requests.get(url, timeout=10)
-                soup = BeautifulSoup(res.text, "html.parser")
-                paragraphs = soup.find_all("p")
-                found = False
-                for p in paragraphs:
-                    if len(p.text.strip()) > 50:
-                        response = p.text.strip()
-                        found = True
-                        break
-                if not found:
-                    response = "Uygun bir bilgi bulunamadı."
-            else:
-                response = "Sonuç bulunamadı."
-        except Exception as e:
-            response = f"Araştırma sırasında bir hata oluştu: {str(e)}"
+        response = google_arastir(text)
 
     # Sohbet geçmişine ekle
-    st.session_state.chat_history.append((original_text, response))
+    st.session_state.chat_history.append((text, response))
 
-# Geçmişi sırayla göster
+# Geçmişi sırayla göster (ChatGPT benzeri)
 if st.session_state.chat_history:
-    st.subheader("🧠 Sohbet Geçmişi")
-    for i, (q, a) in enumerate(st.session_state.chat_history, start=1):
-        st.markdown(f"**{i}. Soru:** {q}")
-        st.markdown(f"**{i}. Cevap:** {a}")
+    for q, a in st.session_state.chat_history:
+        st.markdown(style_user(q), unsafe_allow_html=True)
+        st.markdown(style_bot(a), unsafe_allow_html=True)
