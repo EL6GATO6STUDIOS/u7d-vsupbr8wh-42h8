@@ -1,87 +1,41 @@
-import streamlit as st
-from PyPDF2 import PdfReader
-from PIL import Image
-from googlesearch import search
-import requests
-from bs4 import BeautifulSoup
+import streamlit as st import time from googlesearch import search from PIL import Image import pytesseract import os
 
-st.set_page_config(page_title="Cat CPT 😺", layout="wide")
-st.title("Cat CPT 😺")
+def get_ai_response(text): text_lower = text.lower()
 
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []
+if any(word in text_lower for word in ["selam", "merhaba", "naber"]):
+    return "Merhaba! Sana nasıl yardımcı olabilirim?"
+elif "teşekkür" in text_lower:
+    return "Rica ederim! Başka bir sorunuz varsa yardımcı olmaktan memnuniyet duyarım."
 
-text = st.text_input("Sorunuzu yazın:")
+elif "neden", "sence", "nasıl olur", "yorumla" in text_lower or text_lower.endswith("?"):
+    return f"Bu konuda kendi düşünceme göre şöyle diyebilirim: {text} hakkında birçok farklı görüş olabilir."
 
-uploaded_file = st.file_uploader("Bir dosya yükleyin (.pdf, .txt, .jpg, .png)", type=["pdf", "txt", "jpg", "jpeg", "png"])
+else:
+    try:
+        query = text
+        results = list(search(query, num_results=1))
+        if results:
+            return f"İnternetten bulduğum bilgiye göre: {results[0]}"
+        else:
+            return "Bu konuda bir bilgi bulamadım."
+    except Exception as e:
+        return f"Araştırma sırasında bir hata oluştu: {str(e)}"
 
-if uploaded_file is not None:
-    file_type = uploaded_file.type
-    st.subheader("Yüklenen Dosya:")
+def analyze_file(uploaded_file): if uploaded_file.type.startswith("image"): image = Image.open(uploaded_file) text = pytesseract.image_to_string(image) return f"Görselde okunan metin: {text.strip()}" elif uploaded_file.type == "text/plain": content = uploaded_file.read().decode("utf-8") return f"Dosya içeriği: {content.strip()}" else: return "Yalnızca metin ve görsel dosyaları analiz edebilirim."
 
-    if "pdf" in file_type:
-        reader = PdfReader(uploaded_file)
-        all_text = ""
-        for page in reader.pages:
-            all_text += page.extract_text()
-        st.text_area("PDF İçeriği", all_text)
-    
-    elif "text" in file_type:
-        content = uploaded_file.read().decode("utf-8")
-        st.text_area("Metin Dosyası İçeriği", content)
+Sayfa başlığı ve yapı
 
-    elif "image" in file_type:
-        img = Image.open(uploaded_file)
-        st.image(img, caption="Yüklenen Görsel", use_column_width=True)
+st.markdown(""" <style> .main-container { display: flex; flex-direction: row; } .sidebar { width: 200px; background-color: #111; color: white; padding: 20px; } .chat-area { flex: 1; background-color: black; padding: 20px; color: white; } .chat-bubble { background-color: #222; border-radius: 10px; padding: 10px; margin-bottom: 10px; } .message-input { position: fixed; bottom: 0; left: 200px; right: 0; background-color: #111; padding: 10px; } </style> """, unsafe_allow_html=True)
 
-if text:
-    text_lower = text.lower()
+st.markdown(""" <div class="main-container"> <div class="sidebar"> <input type="text" placeholder="konu arama" style="width:100%; margin-bottom:10px"> <p>🗨 konular ↓</p> <p>1.konu</p> <p>2.konu</p> <p>3.konu</p> <p>4.konu</p> <p>5.konu</p> <p>6.konu</p> </div> <div class="chat-area"> <h3>🐱CAT CPT=KEDİ YAPAY ZEKA</h3> """, unsafe_allow_html=True)
 
-    # Anahtar kelime listeleri
-    analiz_ifadeleri = ["sence", "ne düşünüyorsun", "mantıklı mı", "gerek var mı", "saçma mı", "iyi mi", "kötü mü"]
-    bilgi_ifadeleri = ["nedir", "kimdir", "ne demek", "kaç yaşında", "hangi", "nerede", "nasıl", "neden", "ne zaman"]
+if "chat_history" not in st.session_state: st.session_state.chat_history = []
 
-    is_analiz = any(kelime in text_lower for kelime in analiz_ifadeleri)
-    is_bilgi = any(kelime in text_lower for kelime in bilgi_ifadeleri)
+for i, (q, a) in enumerate(st.session_state.chat_history): st.markdown(f"<div class='chat-bubble'> {i+1}.soru: {q} </div>", unsafe_allow_html=True) st.markdown(f"<div class='chat-bubble'> {i+1}.cevap: {a} </div>", unsafe_allow_html=True)
 
-    # Gündelik konuşmalar
-    if "selam" in text_lower or "merhaba" in text_lower:
-        response = "Selam! Size nasıl yardımcı olabilirim?"
-    elif "naber" in text_lower or "nasılsın" in text_lower:
-        response = "İyiyim, sen nasılsın?"
-    elif "teşekkür" in text_lower:
-        response = "Rica ederim! 😊"
-    elif is_analiz:
-        response = "Bu konuda kendi düşüncem: Bence oldukça ilginç bir konu. 😺"
-    elif is_bilgi:
-        response = "Araştırılıyor..."
-        try:
-            results = list(search(text, num_results=1))
-            if results:
-                url = results[0]
-                res = requests.get(url, timeout=10)
-                soup = BeautifulSoup(res.text, "html.parser")
-                paragraphs = soup.find_all("p")
-                found = False
-                for p in paragraphs:
-                    if len(p.text.strip()) > 50:
-                        response = p.text.strip()
-                        found = True
-                        break
-                if not found:
-                    response = "Uygun bir cevap bulunamadı."
-            else:
-                response = "Hiç sonuç bulunamadı."
-        except Exception as e:
-            response = f"Araştırma sırasında hata oluştu: {str(e)}"
-    else:
-        response = "Bu konuda size yardımcı olmak için daha fazla bilgi verebilir misiniz?"
+st.markdown(""" </div> </div> """, unsafe_allow_html=True)
 
-    st.session_state.chat_history.append((text, response))
+with st.container(): st.markdown("<div class='message-input'>", unsafe_allow_html=True) col1, col2, col3 = st.columns([7, 1, 1]) with col1: user_input = st.text_input("", placeholder="Herhangi bir şey sor", label_visibility="collapsed") with col2: uploaded_file = st.file_uploader("", type=["png", "jpg", "jpeg", "txt"], label_visibility="collapsed") with col3: send = st.button("Gönder") st.markdown("</div>", unsafe_allow_html=True)
 
-# Sıralı geçmiş gösterimi
-if st.session_state.chat_history:
-    st.subheader("🧠 Sohbet Geçmişi")
-    for i, (q, a) in enumerate(st.session_state.chat_history, start=1):
-        st.markdown(f"**{i}. Soru:** {q}")
-        st.markdown(f"**{i}. Cevap:** {a}")
+if send: if uploaded_file: result = analyze_file(uploaded_file) st.session_state.chat_history.append((f"[Dosya: {uploaded_file.name}]", result)) elif user_input: response = get_ai_response(user_input) st.session_state.chat_history.append((user_input, response))
+
