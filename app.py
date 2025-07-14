@@ -1,4 +1,9 @@
-import streamlit as st import pytesseract from PIL import Image from googlesearch import search import os import datetime
+import streamlit as st 
+import pytesseract from PIL 
+import Image from googlesearch 
+import search 
+import os 
+import datetime
 
 st.set_page_config(page_title="Cat CPT", layout="centered")
 
