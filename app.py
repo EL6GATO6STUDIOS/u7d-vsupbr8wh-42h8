@@ -1,73 +1,75 @@
-import streamlit as st
-import time
-from googlesearch import search
-from PIL import Image
-import pytesseract
-import os
+import streamlit as st import pytesseract from PIL import Image from googlesearch import search import os import datetime
 
-st.set_page_config(layout="wide", page_title="Cat CPT")
+st.set_page_config(page_title="Cat CPT", layout="centered")
 
-st.markdown(
-    """
-    <style>
-    body {background-color: #000000;}
-    .message-container {
-        background-color: #111111;
-        color: black;
-        border-radius: 10px;
-        padding: 10px;
-        margin: 10px 0;
-        max-width: 80%;
-    }
-    .user { text-align: left; }
-    .bot { text-align: right; background-color: #222222; }
-    .input-area {
-        position: fixed;
-        bottom: 0;
-        width: 100%;
-        background-color: #000000;
-        padding: 10px;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
+Konuları saklamak için session state
 
-st.title("🐱 CAT CPT = KEDİ YAPAY ZEKA")
+if "conversations" not in st.session_state: st.session_state.conversations = [] if "current_topic" not in st.session_state: st.session_state.current_topic = "Genel Konuşma"
 
-if "history" not in st.session_state:
-    st.session_state.history = []
+Yeni konu başlat butonu
 
-def generate_bot_response(user_input, uploaded_file=None):
-    user_input_lower = user_input.lower()
-    if uploaded_file is not None:
-        try:
-            image = Image.open(uploaded_file)
-            text = pytesseract.image_to_string(image)
-            return f"📄 Fotoğraftan okunan yazı:\n\n{text}"
-        except:
-            return "⚠️ Görsel işleme başarısız oldu."
-    
-    if "?" in user_input:
-        if any(keyword in user_input_lower for keyword in ["neden", "nasıl", "ne", "kim", "nerede", "hangi"]):
-            try:
-                query = user_input
-                results = list(search(query, num_results=1))
-                return f"🔎 Araştırmaya göre en uygun sonuç:\n{results[0]}"
-            except:
-                return "🌐 İnternet araştırması yapılamadı."
-        else:
-            return f"🧠 Benim düşünceme göre: {user_input} ilginç bir ifade. Belki daha net sorarsan daha fazla yorum yapabilirim."
-    elif any(greet in user_input_lower for greet in ["merhaba", "selam", "naber", "nasılsın"]):
-        return "👋 Merhaba! Sana nasıl yardımcı olabilirim?"
+if st.button("➕ Yeni Konu"): st.session_state.current_topic = f"Konu ({datetime.datetime.now().strftime('%H:%M:%S')})" st.session_state.conversations.append((st.session_state.current_topic, []))
+
+Konu seçimi veya oluşturulmamışsa ilk konu
+
+if len(st.session_state.conversations) == 0: st.session_state.conversations.append((st.session_state.current_topic, []))
+
+Mevcut konu verisine referans
+
+topic_index = next(i for i, (t, _) in enumerate(st.session_state.conversations) if t == st.session_state.current_topic) messages = st.session_state.conversations[topic_index][1]
+
+Konu başlığı
+
+st.markdown(f"## 🧠 {st.session_state.current_topic}")
+
+Geçmiş konuşmaları göster
+
+for i, (sender, msg) in enumerate(messages): with st.chat_message(sender): st.markdown(msg)
+
+Giriş kutusu ve dosya yükleme
+
+with st.container(): user_input = st.chat_input("Mesajınızı yazın...") uploaded_file = st.file_uploader("📎 Dosya/Fotograf", type=["png", "jpg", "jpeg", "txt", "pdf"], label_visibility="collapsed")
+
+Mesaj gönderildiyse
+
+if user_input or uploaded_file: if user_input: messages.append(("user", user_input)) with st.chat_message("user"): st.markdown(user_input)
+
+# Soru mu, analiz mi, gündelik mi kontrol et
+    if any(user_input.lower().startswith(q) for q in ["nedir", "kim", "nasıl", "ne", "kaç"]):
+        # Araştırma yap (Google'da tüm cümleyle)
+        query = user_input.strip()
+        result_links = list(search(query, num_results=2))
+        answer = "\n\n".join([f"🔗 [{link}]({link})" for link in result_links])
+        messages.append(("assistant", f"İşte bulduklarım:\n{answer}"))
+        with st.chat_message("assistant"):
+            st.markdown(f"İşte bulduklarım:\n{answer}")
+    elif any(x in user_input.lower() for x in ["yorumla", "analiz et"]):
+        # Analiz cevabı
+        answer = f"Bu konuda şöyle düşünüyorum: {user_input} oldukça ilginç bir konu. İçeriğini değerlendirirken hem bağlam hem de niyet göz önüne alınmalı."
+        messages.append(("assistant", answer))
+        with st.chat_message("assistant"):
+            st.markdown(answer)
     else:
-        return f"🤔 Bunu araştırmak yerine kendi görüşümü sunayım: {user_input} hakkında düşündüğüm şey bu: oldukça dikkat çekici bir ifade."
+        # Gündelik konuşma veya genel cevap
+        answer = f"Söylediğini anladım: '{user_input}'. Sana nasıl yardımcı olabilirim?"
+        messages.append(("assistant", answer))
+        with st.chat_message("assistant"):
+            st.markdown(answer)
 
-# Konu seçme alanı
-with st.sidebar:
-    st.text_input("🔍 konu arama", key="konu_ara")
-    st.markdown("## 💬 konular ↓")
-    for i in range(1, 7):
-        st.markdown(f"{i}.konu")
+if uploaded_file:
+    filetype = uploaded_file.type
+    messages.append(("user", f"📎 Dosya yüklendi: {uploaded_file.name}"))
+    with st.chat_message("user"):
+        st.markdown(f"📎 Dosya yüklendi: {uploaded_file.name}")
 
-# Mesaj geçmişini
+    if filetype.startswith("image"):
+        image = Image.open(uploaded_file)
+        text = pytesseract.image_to_string(image)
+        messages.append(("assistant", f"📖 Görselden okunan metin:\n{text}"))
+        with st.chat_message("assistant"):
+            st.markdown(f"📖 Görselden okunan metin:\n{text}")
+    else:
+        messages.append(("assistant", "🔍 Bu dosya türü şu anda desteklenmiyor."))
+        with st.chat_message("assistant"):
+            st.markdown("🔍 Bu dosya türü şu anda desteklenmiyor.")
+
